@@ -2,6 +2,7 @@ import { useCarbon } from "@carbon/auth";
 import { ValidatedForm } from "@carbon/form";
 import {
   Badge,
+  BarProgress,
   Button,
   Card,
   CardAction,
@@ -19,7 +20,6 @@ import {
   ModalFooter,
   ModalHeader,
   ModalTitle,
-  Progress,
   toast,
   useDisclosure,
   useMount,
@@ -463,8 +463,8 @@ function JobDetails({ job }: { job: Job }) {
                       />
                     ) : (
                       <div className="py-2 w-full">
-                        <Progress
-                          value={Math.min(
+                        <BarProgress
+                          progress={Math.min(
                             ((operation.quantityComplete ?? 0) /
                               (operation.targetQuantity ??
                                 operation.operationQuantity ??
@@ -472,14 +472,7 @@ function JobDetails({ job }: { job: Job }) {
                               100,
                             100
                           )}
-                          numerator={(
-                            operation.quantityComplete ?? 0
-                          ).toString()}
-                          denominator={(
-                            operation.targetQuantity ??
-                            operation.operationQuantity ??
-                            0
-                          ).toString()}
+                          value={`${operation.quantityComplete ?? 0}/${operation.targetQuantity ?? operation.operationQuantity ?? 0}`}
                         />
                       </div>
                     )}

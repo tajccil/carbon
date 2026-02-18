@@ -1,5 +1,6 @@
 import { ValidatedForm } from "@carbon/form";
 import {
+  BarProgress,
   Card,
   CardContent,
   CardFooter,
@@ -12,7 +13,6 @@ import {
   DropdownMenuTrigger,
   HStack,
   IconButton,
-  Progress as ProgressComponent,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -223,19 +223,10 @@ export function ItemCard({ item, isOverlay, progressByItemId }: ItemCardProps) {
           Number(progress) >= 0 &&
           Number(item?.duration) >= 0 && (
             <HStack>
-              <ProgressComponent
-                indicatorClassName={
-                  (progress ?? 0) > (item.duration ?? 0)
-                    ? "bg-red-500"
-                    : status === "Paused"
-                      ? "bg-yellow-500"
-                      : ""
-                }
-                numerator={progress ? formatDurationMilliseconds(progress) : ""}
-                denominator={
-                  item.duration ? formatDurationMilliseconds(item.duration) : ""
-                }
-                value={Math.min(
+              <BarProgress
+                gradient
+                invertGradient
+                progress={Math.min(
                   progress && item.duration
                     ? (progress / item.duration) * 100
                     : 0,
@@ -249,14 +240,8 @@ export function ItemCard({ item, isOverlay, progressByItemId }: ItemCardProps) {
           Number.isFinite(item.targetQuantity ?? item.quantity) &&
           Number(item.targetQuantity ?? item.quantity) > 0 && (
             <HStack>
-              <ProgressComponent
-                numerator={(item.quantityCompleted ?? 0).toString()}
-                denominator={(
-                  item.targetQuantity ??
-                  item.quantity ??
-                  0
-                ).toString()}
-                value={
+              <BarProgress
+                progress={
                   item.quantityCompleted &&
                   (item.targetQuantity ?? item.quantity)
                     ? (item.quantityCompleted /

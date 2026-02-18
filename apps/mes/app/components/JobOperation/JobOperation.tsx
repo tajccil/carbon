@@ -4,7 +4,12 @@ import type { Database } from "@carbon/database";
 import type { JSONContent } from "@carbon/react";
 import {
   Badge,
+  BarProgress,
   Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Copy,
   cn,
   DropdownMenu,
@@ -17,7 +22,6 @@ import {
   HStack,
   IconButton,
   ModelViewer,
-  Progress,
   ScrollArea,
   Separator,
   SidebarTrigger,
@@ -252,7 +256,7 @@ export const JobOperation = ({
     if (operation.setupDuration > 0) operations++;
     if (operation.laborDuration > 0) operations++;
     if (operation.machineDuration > 0) operations++;
-    return 40 + operations * 24;
+    return 60 + operations * 36;
   }, [
     operation.laborDuration,
     operation.machineDuration,
@@ -445,18 +449,14 @@ export const JobOperation = ({
             </div>
             <div className="hidden md:flex flex-shrink-0 items-center justify-end gap-2">
               <TabsList className="md:ml-auto">
-                <TabsTrigger variant="primary" value="details">
-                  Details
-                </TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger
-                  variant="primary"
                   disabled={!job.modelPath && !operation.itemModelPath}
                   value="model"
                 >
                   Model
                 </TabsTrigger>
                 <TabsTrigger
-                  variant="primary"
                   disabled={
                     !operation.workInstruction ||
                     Object.keys(operation.workInstruction).length === 0
@@ -465,9 +465,7 @@ export const JobOperation = ({
                 >
                   Procedure
                 </TabsTrigger>
-                <TabsTrigger variant="primary" value="chat">
-                  Chat
-                </TabsTrigger>
+                <TabsTrigger value="chat">Chat</TabsTrigger>
               </TabsList>
             </div>
           </HStack>
@@ -618,41 +616,36 @@ export const JobOperation = ({
             <Separator />
             <div className="flex items-start p-4 lg:p-6">
               <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3 w-full">
-                <div className="rounded-xl border bg-card text-card-foreground shadow">
-                  <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                    <h3 className="tracking-tight text-sm font-medium">
-                      Completed
-                    </h3>
+                <Card>
+                  <CardHeader className="flex flex-row items-center gap-2 justify-between">
+                    <CardTitle>Completed</CardTitle>
                     <FaCheck className="h-3 w-3 text-emerald-500" />
-                  </div>
-                  <div className="p-6 pt-0">
+                  </CardHeader>
+
+                  <CardContent>
                     <Heading size="h1">
                       {operation.quantityComplete} of {operation.targetQuantity}
                     </Heading>
-                  </div>
-                </div>
-                <div className="rounded-xl border bg-card text-card-foreground shadow">
-                  <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                    <h3 className="tracking-tight text-sm font-medium">
-                      Scrapped
-                    </h3>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center gap-2 justify-between">
+                    <CardTitle>Scrapped</CardTitle>
                     <FaTrash className="h-3 w-3 text-muted-foreground" />
-                  </div>
-                  <div className="p-6 pt-0">
+                  </CardHeader>
+                  <CardContent>
                     <Heading size="h1">{operation.quantityScrapped}</Heading>
-                  </div>
-                </div>
-                <div className="rounded-xl border bg-card text-card-foreground shadow">
-                  <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                    <h3 className="tracking-tight text-sm font-medium">
-                      Due Date
-                    </h3>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center gap-2 justify-between">
+                    <CardTitle>Due Date</CardTitle>
                     <DeadlineIcon
                       deadlineType={operation.jobDeadlineType}
                       overdue={isOverdue}
                     />
-                  </div>
-                  <div className="p-6 pt-0">
+                  </CardHeader>
+                  <CardContent>
                     <VStack className="justify-start" spacing={0}>
                       <Heading
                         size="h3"
@@ -679,8 +672,8 @@ export const JobOperation = ({
                           : null}
                       </span>
                     </VStack>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
 
@@ -840,8 +833,11 @@ export const JobOperation = ({
                                             )}
                                           </div>
 
-                                          <Progress
-                                            value={
+                                          <BarProgress
+                                            label="Steps"
+                                            gradient
+                                            invertGradient
+                                            progress={
                                               (attributes.filter((a) =>
                                                 a.jobOperationStepRecord.some(
                                                   (r) => r.index === activeStep
@@ -850,7 +846,6 @@ export const JobOperation = ({
                                                 attributes.length) *
                                               100
                                             }
-                                            className="h-2 w-24"
                                           />
                                           <span className="text-xs text-muted-foreground">
                                             {
@@ -1743,8 +1738,11 @@ export const JobOperation = ({
                                     </div>
 
                                     <div className="flex flex-col justify-center items-end gap-1">
-                                      <Progress
-                                        value={
+                                      <BarProgress
+                                        label="Steps"
+                                        gradient
+                                        invertGradient
+                                        progress={
                                           (attributes.filter((a) =>
                                             a.jobOperationStepRecord.some(
                                               (r) => r.index === activeStep
@@ -1753,7 +1751,6 @@ export const JobOperation = ({
                                             attributes.length) *
                                           100
                                         }
-                                        className="h-2 w-24"
                                       />
                                       <span className="text-xs text-muted-foreground">
                                         {
@@ -2062,16 +2059,18 @@ export const JobOperation = ({
                       </TooltipTrigger>
                       <TooltipContent side="right">Setup</TooltipContent>
                     </Tooltip>
-                    <Progress
-                      numerator={formatDurationMilliseconds(progress.setup)}
-                      denominator={formatDurationMilliseconds(
-                        operation.setupDuration
-                      )}
-                      value={(progress.setup / operation.setupDuration) * 100}
-                      indicatorClassName={
+                    <BarProgress
+                      label="Setup"
+                      gradient
+                      invertGradient
+                      value={`${formatDurationMilliseconds(progress.setup, { style: "short" })}/${formatDurationMilliseconds(operation.setupDuration, { style: "short" })}`}
+                      progress={
+                        (progress.setup / operation.setupDuration) * 100
+                      }
+                      activeClassName={
                         progress.setup > operation.setupDuration
                           ? "bg-red-500"
-                          : ""
+                          : "bg-emerald-500"
                       }
                     />
                   </HStack>
@@ -2084,16 +2083,18 @@ export const JobOperation = ({
                       </TooltipTrigger>
                       <TooltipContent side="right">Labor</TooltipContent>
                     </Tooltip>
-                    <Progress
-                      numerator={formatDurationMilliseconds(progress.labor)}
-                      denominator={formatDurationMilliseconds(
-                        operation.laborDuration
-                      )}
-                      value={(progress.labor / operation.laborDuration) * 100}
-                      indicatorClassName={
+                    <BarProgress
+                      label="Labor"
+                      gradient
+                      invertGradient
+                      value={`${formatDurationMilliseconds(progress.labor, { style: "short" })}/${formatDurationMilliseconds(operation.laborDuration, { style: "short" })}`}
+                      progress={
+                        (progress.labor / operation.laborDuration) * 100
+                      }
+                      activeClassName={
                         progress.labor > operation.laborDuration
                           ? "bg-red-500"
-                          : ""
+                          : "bg-emerald-500"
                       }
                     />
                   </HStack>
@@ -2106,18 +2107,18 @@ export const JobOperation = ({
                       </TooltipTrigger>
                       <TooltipContent side="right">Machine</TooltipContent>
                     </Tooltip>
-                    <Progress
-                      numerator={formatDurationMilliseconds(progress.machine)}
-                      denominator={formatDurationMilliseconds(
-                        operation.machineDuration
-                      )}
-                      value={
+                    <BarProgress
+                      label="Machine"
+                      gradient
+                      invertGradient
+                      value={`${formatDurationMilliseconds(progress.machine, { style: "short" })}/${formatDurationMilliseconds(operation.machineDuration, { style: "short" })}`}
+                      progress={
                         (progress.machine / operation.machineDuration) * 100
                       }
-                      indicatorClassName={
+                      activeClassName={
                         progress.machine > operation.machineDuration
                           ? "bg-red-500"
-                          : ""
+                          : "bg-emerald-500"
                       }
                     />
                   </HStack>
@@ -2129,16 +2130,16 @@ export const JobOperation = ({
                     </TooltipTrigger>
                     <TooltipContent side="right">Quantity</TooltipContent>
                   </Tooltip>
-                  <Progress
-                    indicatorClassName={
+                  <BarProgress
+                    label="Quantity"
+                    activeClassName={
                       operation.operationStatus === "Paused" &&
                       operation.quantityComplete < operation.targetQuantity
                         ? "bg-yellow-500"
-                        : ""
+                        : "bg-emerald-500"
                     }
-                    numerator={operation.quantityComplete.toString()}
-                    denominator={operation.targetQuantity.toString()}
-                    value={
+                    value={`${operation.quantityComplete}/${operation.targetQuantity}`}
+                    progress={
                       (operation.quantityComplete / operation.targetQuantity) *
                       100
                     }

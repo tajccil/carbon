@@ -2408,7 +2408,7 @@ function AttributesListItem({
           </div>
         </div>
       )}
-      {!isDisabled && deleteModalDisclosure.isOpen && (
+      {deleteModalDisclosure.isOpen && (
         <ConfirmDelete
           action={path.to.deleteMethodOperationStep(id)}
           isOpen={deleteModalDisclosure.isOpen}
@@ -2699,7 +2699,7 @@ function ParametersListItem({
           </div>
         </div>
       )}
-      {!isDisabled && deleteModalDisclosure.isOpen && (
+      {deleteModalDisclosure.isOpen && (
         <ConfirmDelete
           action={path.to.deleteMethodOperationParameter(id)}
           isOpen={deleteModalDisclosure.isOpen}
@@ -2932,7 +2932,7 @@ function ToolsListItem({
           </div>
         </div>
       )}
-      {!isDisabled && deleteModalDisclosure.isOpen && (
+      {deleteModalDisclosure.isOpen && (
         <ConfirmDelete
           action={path.to.deleteMethodOperationTool(id)}
           isOpen={deleteModalDisclosure.isOpen}

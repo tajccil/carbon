@@ -150,7 +150,7 @@ export async function getCompany(
   companyId: string
 ) {
   const company = await client
-    .from("companies")
+    .from("company")
     .select("*")
     .eq("id", companyId)
     .single();

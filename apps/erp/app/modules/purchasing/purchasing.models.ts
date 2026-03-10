@@ -98,6 +98,7 @@ export const purchaseOrderValidator = z.object({
     })
   }),
   supplierId: z.string().min(1, { message: "Supplier is required" }),
+  locationId: zfd.text(z.string().optional()),
   supplierLocationId: zfd.text(z.string().optional()),
   supplierContactId: zfd.text(z.string().optional()),
   supplierReference: zfd.text(z.string().optional()),

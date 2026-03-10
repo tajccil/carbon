@@ -1280,13 +1280,17 @@ export async function upsertPurchaseOrder(
     purchaseOrder.exchangeRateUpdatedAt = new Date().toISOString();
   }
 
-  const locationId = purchaser?.data?.locationId ?? null;
+  const locationId =
+    purchaseOrder.locationId ?? purchaser?.data?.locationId ?? null;
+
+  // locationId is not a column on purchaseOrder -- it belongs on the delivery record
+  const { locationId: _locationId, ...purchaseOrderData } = purchaseOrder;
 
   const order = await client
     .from("purchaseOrder")
     .insert([
       {
-        ...purchaseOrder,
+        ...purchaseOrderData,
         supplierInteractionId: supplierInteraction.data?.id,
         status: purchaseOrder.status ?? "Draft"
       }

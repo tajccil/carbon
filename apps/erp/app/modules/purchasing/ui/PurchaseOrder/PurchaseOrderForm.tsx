@@ -19,6 +19,7 @@ import {
   CustomFormFields,
   Hidden,
   Input,
+  Location,
   SequenceOrCustomId,
   Submit,
   Supplier,
@@ -150,6 +151,7 @@ const PurchaseOrderForm = ({ initialValues }: PurchaseOrderFormProps) => {
                 value={supplier.supplierContactId}
               />
 
+              <Location name="locationId" label="Location" />
               <Currency
                 name="currencyCode"
                 label="Currency"

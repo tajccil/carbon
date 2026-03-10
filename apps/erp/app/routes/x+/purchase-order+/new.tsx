@@ -5,7 +5,8 @@ import { validationError, validator } from "@carbon/form";
 import { getLocalTimeZone, today } from "@internationalized/date";
 import type { ActionFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import { useUrlParams } from "~/hooks";
+import { z } from "zod";
+import { useUrlParams, useUser } from "~/hooks";
 import type { PurchaseOrderStatus } from "~/modules/purchasing";
 import {
   purchaseOrderValidator,
@@ -17,6 +18,10 @@ import { getNextSequence } from "~/modules/settings";
 import { setCustomFields } from "~/utils/form";
 import type { Handle } from "~/utils/handle";
 import { path } from "~/utils/path";
+
+const newPurchaseOrderValidator = purchaseOrderValidator.extend({
+  locationId: z.string().min(1, { message: "Location is required" })
+});
 
 export const handle: Handle = {
   breadcrumb: "Orders",
@@ -31,7 +36,9 @@ export async function action({ request }: ActionFunctionArgs) {
   });
 
   const formData = await request.formData();
-  const validation = await validator(purchaseOrderValidator).validate(formData);
+  const validation = await validator(newPurchaseOrderValidator).validate(
+    formData
+  );
 
   if (validation.error) {
     return validationError(validation.error);
@@ -86,10 +93,12 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function PurchaseOrderNewRoute() {
   const [params] = useUrlParams();
   const supplierId = params.get("supplierId");
+  const { defaults } = useUser();
   const initialValues = {
     id: undefined,
     purchaseOrderId: undefined,
     supplierId: supplierId ?? "",
+    locationId: defaults?.locationId ?? "",
     orderDate: today(getLocalTimeZone()).toString(),
     status: "Draft" as PurchaseOrderStatus,
     purchaseOrderType: "Purchase" as const

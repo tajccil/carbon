@@ -284,7 +284,7 @@ const ToolForm = ({ initialValues, type = "card", onClose }: ToolFormProps) => {
                   label="Unit of Measure"
                 />
                 {!isEditing && (
-                  <ItemPostingGroup name="postingGroupId" label="Item Group" />
+                  <ItemPostingGroup name="postingGroupId" label="Item Group" isClearable />
                 )}
                 {!isEditing && (
                   <Number

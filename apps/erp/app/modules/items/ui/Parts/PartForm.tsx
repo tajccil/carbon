@@ -288,7 +288,7 @@ const PartForm = ({ initialValues, type = "card", onClose }: PartFormProps) => {
                   label="Unit of Measure"
                 />
                 {!isEditing && (
-                  <ItemPostingGroup name="postingGroupId" label="Item Group" />
+                  <ItemPostingGroup name="postingGroupId" label="Item Group" isClearable />
                 )}
                 {!isEditing && replenishmentSystem !== "Make" && (
                   <Number

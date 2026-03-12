@@ -393,6 +393,7 @@ const MaterialProperties = () => {
             label="Item Group"
             name="itemPostingGroupId"
             inline
+            isClearable
             onChange={(value) => {
               onUpdate("itemPostingGroupId", value?.value ?? null);
             }}

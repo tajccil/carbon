@@ -301,7 +301,7 @@ const MaterialForm = ({
                   minValue={0}
                 />
 
-                <ItemPostingGroup name="postingGroupId" label="Item Group" />
+                <ItemPostingGroup name="postingGroupId" label="Item Group" isClearable />
                 <Array name="sizes" label="Sizes" />
 
                 <CustomFormFields table="material" tags={initialValues.tags} />

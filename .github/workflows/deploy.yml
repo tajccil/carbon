@@ -37,6 +37,9 @@ jobs:
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         with:
           context: .
           file: ./apps/${{ matrix.app }}/Dockerfile

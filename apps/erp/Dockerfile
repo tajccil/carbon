@@ -18,6 +18,7 @@ FROM node:20
 WORKDIR /repo
 # Install specific npm version
 RUN npm install -g npm@10.8.2
+ENV NODE_OPTIONS=--max-old-space-size=4096
 ENV NODE_ENV=production
 ENV PORT=3000
 # Install curl for health checks

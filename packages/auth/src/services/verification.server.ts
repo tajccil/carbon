@@ -4,6 +4,16 @@ import { sendEmail } from "@carbon/lib/resend.server";
 import { render } from "@react-email/components";
 import { RESEND_DOMAIN } from "../config/env";
 
+function getVerificationFrom(): string {
+  if (process.env.MAIL_FROM_ADDRESS) {
+    let name = process.env.MAIL_FROM_NAME ?? process.env.APP_NAME ?? "Carbon";
+    name = name.replace(/\$\{APP_NAME\}/g, process.env.APP_NAME ?? "Carbon");
+    name = name.replace(/^["']|["']$/g, "");
+    return `${name} <${process.env.MAIL_FROM_ADDRESS}>`;
+  }
+  return `Carbon <no-reply@${RESEND_DOMAIN}>`;
+}
+
 export async function sendVerificationCode(email: string) {
   try {
     // Generate 6-digit verification code
@@ -25,7 +35,7 @@ export async function sendVerificationCode(email: string) {
     );
 
     const result = await sendEmail({
-      from: `Carbon <no-reply@${RESEND_DOMAIN}>`,
+      from: getVerificationFrom(),
       to: email,
       subject: "Verify your email address",
       html

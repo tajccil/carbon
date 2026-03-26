@@ -1,0 +1,36 @@
+# Self-hosted ERP + Postgres (persistent volume).
+# Carbon still requires SUPABASE_URL + JWT keys from a Supabase-compatible API — see README.md.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-carbon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-carbon}
+    volumes:
+      - carbon_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-carbon} -d ${POSTGRES_DB:-carbon}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  erp:
+    build:
+      context: ../..
+      dockerfile: apps/erp/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # If Supabase runs on the host (e.g. `supabase start`), use SUPABASE_URL=http://host.docker.internal:54321
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  carbon_postgres_data:

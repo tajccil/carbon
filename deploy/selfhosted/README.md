@@ -1,5 +1,7 @@
 # Self-hosted ERP (Docker, production)
 
+See the repository overview in **`docs/DEPLOYMENT.md`**.
+
 Run the Carbon **ERP** container with a local **Postgres** volume, bind **port 3000**, and supply secrets via **`.env`**. This path does **not** use AWS/SST; you operate Docker and your own reverse proxy.
 
 ## What you run

@@ -1,5 +1,7 @@
 # Self-hosted Docker deployment (ERP)
 
+Canonical human-facing doc: **`docs/DEPLOYMENT.md`**.
+
 ## Location
 
 - **`deploy/selfhosted/`** — `docker-compose.yml` (postgres + erp), `deploy.sh`, `README.md`, `.env.example`.

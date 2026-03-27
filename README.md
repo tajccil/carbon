@@ -322,6 +322,10 @@ $ npm run dev
 
 4. Rename the `_migraitons` folder back to `migrations`
 
+## Deployment
+
+Production options (AWS/SST vs self-hosted Docker), environment variables, and verification steps are documented in **`docs/DEPLOYMENT.md`**. Self-hosted compose and `deploy.sh` live under **`deploy/selfhosted/`**.
+
 ## API
 
 The API documentation is located in the ERP app at `${ERP}/x/api/js/intro`. It is auto-generated based on changes to the database.

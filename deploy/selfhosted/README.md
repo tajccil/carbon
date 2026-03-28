@@ -21,6 +21,10 @@ cd deploy/selfhosted
 cp .env.example .env
 ```
 
+**Do not paste only the repo root `.env` here** unless you add the **`POSTGRES_USER`**, **`POSTGRES_PASSWORD`**, and **`POSTGRES_DB`** lines — the root dev file often omits them. The Postgres service reads **`deploy/selfhosted/.env`** (next to `docker-compose.yml`), so those variables must exist in **this** file.
+
+You can run `docker compose` from the repository root with `-f deploy/selfhosted/docker-compose.yml`; compose loads **`deploy/selfhosted/.env`** for the stack without requiring matching variables in the root `.env`.
+
 ### Required
 
 - **`SESSION_SECRET`** — `openssl rand -base64 16`

@@ -1,17 +1,19 @@
 # Self-hosted ERP + Postgres (persistent volume).
 # Carbon still requires SUPABASE_URL + JWT keys from a Supabase-compatible API — see README.md.
+#
+# Postgres credentials come only from env_file (same directory as this file). That way
+# `docker compose -f deploy/selfhosted/docker-compose.yml` works from the repo root and does
+# not use the root .env for ${...} interpolation (which caused missing POSTGRES_PASSWORD).
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-carbon}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:-carbon}
+    env_file:
+      - .env
     volumes:
       - carbon_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-carbon} -d ${POSTGRES_DB:-carbon}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10

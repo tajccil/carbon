@@ -12,11 +12,13 @@ services:
       - .env
     volumes:
       - carbon_postgres_data:/var/lib/postgresql/data
+    # start_period: first init of an empty volume can take 30s+; failures before this do not mark unhealthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 12
+      start_period: 60s
 
   erp:
     build:

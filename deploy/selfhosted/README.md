@@ -128,6 +128,19 @@ Postgres data: Docker volume **`carbon_postgres_data`**. Back it up with your no
 curl -fsS http://127.0.0.1:3000/health
 ```
 
+### Postgres container unhealthy
+
+1. **Logs** — `docker compose --env-file .env logs postgres` (from `deploy/selfhosted`). Look for auth errors, disk full, or “database files are incompatible”.
+2. **First boot** — An empty volume needs time to init; the compose file uses a **`start_period`** so health checks do not fail immediately.
+3. **Password / volume mismatch** — If you **changed `POSTGRES_PASSWORD`** after Postgres already initialized the volume, the old data no longer matches. Either restore the old password or **reset the volume** (destroys data):
+
+   ```bash
+   docker compose --env-file .env down
+   docker volume ls | grep carbon_postgres   # note the full name, e.g. deploy_selfhosted_carbon_postgres_data
+   docker volume rm <that_name>
+   docker compose --env-file .env up -d
+   ```
+
 ---
 
 ## Updates

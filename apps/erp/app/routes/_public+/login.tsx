@@ -7,15 +7,13 @@ import {
   CONTROLLED_ENVIRONMENT,
   carbonClient,
   error,
-  magicLinkValidator,
-  RATE_LIMIT
+  magicLinkValidator
 } from "@carbon/auth";
 import { sendMagicLink, verifyAuthSession } from "@carbon/auth/auth.server";
 import { flash, getAuthSession } from "@carbon/auth/session.server";
 import { getUserByEmail } from "@carbon/auth/users.server";
 import { sendVerificationCode } from "@carbon/auth/verification.server";
 import { Hidden, Input, Submit, ValidatedForm, validator } from "@carbon/form";
-import { redis } from "@carbon/kv";
 import {
   Alert,
   AlertDescription,
@@ -29,7 +27,6 @@ import {
 import { ItarLoginDisclaimer, useMode } from "@carbon/remix";
 import { Edition } from "@carbon/utils";
 import { Turnstile } from "@marsidev/react-turnstile";
-import { Ratelimit } from "@upstash/ratelimit";
 import { useEffect, useState } from "react";
 import { LuCircleAlert } from "react-icons/lu";
 import type {
@@ -64,23 +61,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   };
 }
 
-const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(RATE_LIMIT, "1 h"),
-  analytics: true
-});
-
 export async function action({ request }: ActionFunctionArgs) {
   assertIsPost(request);
   const ip = request.headers.get("x-forwarded-for") ?? "127.0.0.1";
-  const { success } = await ratelimit.limit(ip);
-
-  if (!success) {
-    return data(
-      error(null, "Rate limit exceeded"),
-      await flash(request, error(null, "Rate limit exceeded"))
-    );
-  }
 
   const validation = await validator(magicLinkValidator).validate(
     await request.formData()

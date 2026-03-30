@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { assertIsPost, error, RATE_LIMIT } from "@carbon/auth";
+import { assertIsPost, error } from "@carbon/auth";
 import {
   createEmailAuthAccount,
   signInWithEmail
@@ -11,7 +11,6 @@ import {
 } from "@carbon/auth/session.server";
 import { verifyEmailCode } from "@carbon/auth/verification.server";
 import { Hidden, InputOTP, ValidatedForm, validator } from "@carbon/form";
-import { redis } from "@carbon/kv";
 import {
   Alert,
   AlertDescription,
@@ -20,7 +19,6 @@ import {
   Heading,
   VStack
 } from "@carbon/react";
-import { Ratelimit } from "@upstash/ratelimit";
 import { LuCircleAlert } from "react-icons/lu";
 import type {
   ActionFunctionArgs,
@@ -58,24 +56,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(RATE_LIMIT, "1 h"),
-  analytics: true
-});
-
 export async function action({ request }: ActionFunctionArgs) {
   assertIsPost(request);
-  const ip = request.headers.get("x-forwarded-for") ?? "127.0.0.1";
-
-  const { success } = await ratelimit.limit(ip);
-
-  if (!success) {
-    return data(
-      error(null, "Rate limit exceeded"),
-      await flash(request, error(null, "Rate limit exceeded"))
-    );
-  }
 
   const validation = await validator(verifyValidator).validate(
     await request.formData()

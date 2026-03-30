@@ -3,7 +3,6 @@ import {
   carbonClient,
   error,
   magicLinkValidator,
-  RATE_LIMIT,
   SUPABASE_AUTH_EXTERNAL_AZURE_CLIENT_ID,
   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID
 } from "@carbon/auth";
@@ -11,7 +10,6 @@ import { sendMagicLink, verifyAuthSession } from "@carbon/auth/auth.server";
 import { flash, getAuthSession } from "@carbon/auth/session.server";
 import { getUserByEmail } from "@carbon/auth/users.server";
 import { Hidden, Input, Submit, ValidatedForm, validator } from "@carbon/form";
-import { redis } from "@carbon/kv";
 import {
   Alert,
   AlertDescription,
@@ -22,7 +20,6 @@ import {
   toast,
   VStack
 } from "@carbon/react";
-import { Ratelimit } from "@upstash/ratelimit";
 import { LuCircleAlert } from "react-icons/lu";
 import type {
   ActionFunctionArgs,
@@ -55,23 +52,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   };
 }
 
-const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(RATE_LIMIT, "1 h"),
-  analytics: true
-});
-
 export async function action({ request }: ActionFunctionArgs) {
   assertIsPost(request);
-  const ip = request.headers.get("x-forwarded-for") ?? "127.0.0.1";
-  const { success } = await ratelimit.limit(ip);
-
-  if (!success) {
-    return data(
-      error(null, "Rate limit exceeded"),
-      await flash(request, error(null, "Rate limit exceeded"))
-    );
-  }
 
   const validation = await validator(magicLinkValidator).validate(
     await request.formData()

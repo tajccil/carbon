@@ -35,7 +35,10 @@ export async function createEmailAuthAccount(
     }
   });
 
-  if (!data.user || error) return null;
+  if (!data.user || error) {
+    console.error("[createEmailAuthAccount]", email, error?.message ?? error);
+    return null;
+  }
 
   return data.user;
 }

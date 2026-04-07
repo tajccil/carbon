@@ -7,7 +7,7 @@ import {
   error,
   magicLinkValidator
 } from "@carbon/auth";
-import { sendMagicLink, verifyAuthSession } from "@carbon/auth/auth.server";
+import { sendLoginOtp, verifyAuthSession } from "@carbon/auth/auth.server";
 import { flash, getAuthSession } from "@carbon/auth/session.server";
 import { getUserByEmail } from "@carbon/auth/users.server";
 import { Hidden, Input, Submit, ValidatedForm, validator } from "@carbon/form";
@@ -23,6 +23,7 @@ import {
 } from "@carbon/react";
 import { ItarLoginDisclaimer } from "@carbon/remix";
 import { Edition } from "@carbon/utils";
+import { useEffect } from "react";
 import { LuCircleAlert } from "react-icons/lu";
 import type {
   ActionFunctionArgs,
@@ -71,12 +72,12 @@ export async function action({ request }: ActionFunctionArgs) {
   const user = await getUserByEmail(email);
 
   if (user.data && user.data.active) {
-    const magicLink = await sendMagicLink(email);
+    const loginOtp = await sendLoginOtp(email);
 
-    if (!magicLink) {
+    if (loginOtp.error) {
       return data(
-        error(magicLink, "Failed to send magic link"),
-        await flash(request, error(magicLink, "Failed to send magic link"))
+        error(loginOtp, "Failed to send sign-in code"),
+        await flash(request, error(loginOtp, "Failed to send sign-in code"))
       );
     }
   } else {
@@ -86,7 +87,7 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
-  return { success: true };
+  return { success: true, email };
 }
 
 export default function LoginRoute() {
@@ -98,8 +99,19 @@ export default function LoginRoute() {
   const redirectTo = searchParams.get("redirectTo") ?? undefined;
 
   const fetcher = useFetcher<
-    { success: true } | { success: false; message: string }
+    { success: true; email: string } | { success: false; message: string }
   >();
+
+  useEffect(() => {
+    if (fetcher.data && "success" in fetcher.data && fetcher.data.success) {
+      const em = fetcher.data.email;
+      if (em) {
+        window.location.href = `/verify?email=${encodeURIComponent(em)}&intent=login${
+          redirectTo ? `&redirectTo=${encodeURIComponent(redirectTo)}` : ""
+        }`;
+      }
+    }
+  }, [fetcher.data, redirectTo]);
 
   const onSignInWithGoogle = async () => {
     const { error } = await carbonClient.auth.signInWithOAuth({
@@ -142,15 +154,16 @@ export default function LoginRoute() {
         />
       </div>
       <div className="rounded-lg md:bg-card md:border md:border-border md:shadow-lg p-8 w-[380px]">
-        {fetcher.data?.success === true ? (
-          <>
-            <VStack spacing={4} className="items-center justify-center">
-              <Heading size="h3">Check your email</Heading>
-              <p className="text-muted-foreground tracking-tight text-sm">
-                We've sent you a magic link to sign in to your account.
-              </p>
-            </VStack>
-          </>
+        {fetcher.data &&
+        "success" in fetcher.data &&
+        fetcher.data.success &&
+        fetcher.data.email ? (
+          <VStack spacing={4} className="items-center justify-center">
+            <Heading size="h3">Check your email</Heading>
+            <p className="text-muted-foreground tracking-tight text-sm text-center">
+              Redirecting to enter your sign-in code…
+            </p>
+          </VStack>
         ) : (
           <ValidatedForm
             fetcher={fetcher}

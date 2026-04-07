@@ -4,7 +4,8 @@ import { sendEmail } from "@carbon/lib/resend.server";
 import { render } from "@react-email/components";
 import { RESEND_DOMAIN } from "../config/env";
 
-function getVerificationFrom(): string {
+/** From address for transactional auth emails (OTP). */
+export function getAuthTransactionalEmailFrom(): string {
   if (process.env.MAIL_FROM_ADDRESS) {
     let name = process.env.MAIL_FROM_NAME ?? process.env.APP_NAME ?? "Carbon";
     name = name.replace(/\$\{APP_NAME\}/g, process.env.APP_NAME ?? "Carbon");
@@ -12,6 +13,33 @@ function getVerificationFrom(): string {
     return `${name} <${process.env.MAIL_FROM_ADDRESS}>`;
   }
   return `Carbon <no-reply@${RESEND_DOMAIN}>`;
+}
+
+/** Sends email sign-in OTP via the same SMTP/Resend path as signup verification codes. */
+export async function sendLoginOtpEmail(
+  email: string,
+  otp: string
+): Promise<boolean> {
+  try {
+    const html = await render(
+      VerificationEmail({
+        email,
+        verificationCode: otp
+      })
+    );
+
+    const result = await sendEmail({
+      from: getAuthTransactionalEmailFrom(),
+      to: email,
+      subject: "Sign in to Carbon",
+      html
+    });
+
+    return !result.error;
+  } catch (err) {
+    console.error("Failed to send sign-in code email:", err);
+    return false;
+  }
 }
 
 export async function sendVerificationCode(email: string) {
@@ -35,7 +63,7 @@ export async function sendVerificationCode(email: string) {
     );
 
     const result = await sendEmail({
-      from: getVerificationFrom(),
+      from: getAuthTransactionalEmailFrom(),
       to: email,
       subject: "Verify your email address",
       html

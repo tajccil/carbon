@@ -9,11 +9,18 @@ import {
   error,
   magicLinkValidator
 } from "@carbon/auth";
-import { sendMagicLink, verifyAuthSession } from "@carbon/auth/auth.server";
+import { sendLoginOtp, verifyAuthSession } from "@carbon/auth/auth.server";
 import { flash, getAuthSession } from "@carbon/auth/session.server";
 import { getUserByEmail } from "@carbon/auth/users.server";
 import { sendVerificationCode } from "@carbon/auth/verification.server";
-import { Hidden, Input, Submit, ValidatedForm, validator } from "@carbon/form";
+import {
+  Hidden,
+  Input,
+  InputOTP,
+  Submit,
+  ValidatedForm,
+  validator
+} from "@carbon/form";
 import {
   Alert,
   AlertDescription,
@@ -41,12 +48,20 @@ import {
   useLoaderData,
   useSearchParams
 } from "react-router";
+import { z } from "zod";
 import type { Result } from "~/types";
 import { path } from "~/utils/path";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Carbon | Login" }];
 };
+
+const loginOtpValidator = z.object({
+  email: z.string().email(),
+  code: z.string().length(6),
+  redirectTo: z.string().optional(),
+  intent: z.literal("login")
+});
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const authSession = await getAuthSession(request);
@@ -109,15 +124,15 @@ export async function action({ request }: ActionFunctionArgs) {
   const user = await getUserByEmail(email);
 
   if (user.data && user.data.active) {
-    const magicLink = await sendMagicLink(email);
+    const loginOtp = await sendLoginOtp(email);
 
-    if (magicLink.error) {
+    if (loginOtp.error) {
       return data(
-        error(magicLink, "Failed to send magic link"),
-        await flash(request, error(magicLink, "Failed to send magic link"))
+        error(loginOtp, "Failed to send sign-in code"),
+        await flash(request, error(loginOtp, "Failed to send sign-in code"))
       );
     }
-    return { success: true, mode: "login" };
+    return { success: true, mode: "login", email };
   } else if (CarbonEdition === Edition.Enterprise) {
     return data(
       { success: false, message: "User record not found" },
@@ -150,23 +165,24 @@ export default function LoginRoute() {
   const [turnstileToken, setTurnstileToken] = useState<string>("");
 
   const fetcher = useFetcher<Result & { mode?: string; email?: string }>();
+  const verifyFetcher = useFetcher();
   const theme = useMode();
 
   useEffect(() => {
-    if (fetcher.data?.success && fetcher.data.mode) {
-      if (fetcher.data.mode === "signup" && mode !== "verify") {
-        setMode("verify");
-        if (fetcher.data.email) {
-          setSignupEmail(fetcher.data.email);
-          // Redirect to verify route with email parameter
-          const verifyUrl = `/verify?email=${encodeURIComponent(
-            fetcher.data.email
-          )}${
-            redirectTo ? `&redirectTo=${encodeURIComponent(redirectTo)}` : ""
-          }`;
-          window.location.href = verifyUrl;
-        }
-      }
+    if (!fetcher.data?.success || !fetcher.data.mode || mode === "verify") {
+      return;
+    }
+    const em = fetcher.data.email;
+    if (!em) {
+      return;
+    }
+    if (fetcher.data.mode === "signup") {
+      setMode("verify");
+      setSignupEmail(em);
+      const verifyUrl = `/verify?email=${encodeURIComponent(em)}${
+        redirectTo ? `&redirectTo=${encodeURIComponent(redirectTo)}` : ""
+      }`;
+      window.location.href = verifyUrl;
     }
   }, [fetcher.data, mode, redirectTo]);
 
@@ -211,15 +227,64 @@ export default function LoginRoute() {
         />
       </div>
       <div className="rounded-lg md:bg-card md:border md:border-border md:shadow-lg p-8 w-[380px]">
-        {fetcher.data?.success === true && fetcher.data?.mode === "login" ? (
-          <>
-            <VStack spacing={4} className="items-center justify-center">
-              <Heading size="h3">Check your email</Heading>
-              <p className="text-muted-foreground tracking-tight text-sm">
-                We've sent you a magic link to sign in to your account.
+        {fetcher.data?.success &&
+        fetcher.data.mode === "login" &&
+        fetcher.data.email ? (
+          <ValidatedForm
+            fetcher={verifyFetcher}
+            validator={loginOtpValidator}
+            defaultValues={{
+              email: fetcher.data.email,
+              redirectTo,
+              intent: "login" as const
+            }}
+            method="post"
+            action="/verify"
+          >
+            <Hidden name="email" value={fetcher.data.email} />
+            <Hidden name="redirectTo" value={redirectTo} />
+            <Hidden name="intent" value="login" />
+            <VStack spacing={4} className="items-center w-full">
+              <Heading size="h3">Enter your sign-in code</Heading>
+              <p className="text-muted-foreground tracking-tight text-sm text-center">
+                We&apos;ve sent a 6-digit code to {fetcher.data.email}
               </p>
+              {verifyFetcher.data &&
+                typeof verifyFetcher.data === "object" &&
+                "success" in verifyFetcher.data &&
+                verifyFetcher.data.success === false &&
+                "message" in verifyFetcher.data &&
+                typeof verifyFetcher.data.message === "string" && (
+                  <Alert variant="destructive">
+                    <LuCircleAlert className="w-4 h-4" />
+                    <AlertTitle>Sign-in error</AlertTitle>
+                    <AlertDescription>
+                      {verifyFetcher.data.message}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              <InputOTP name="code" label="" />
+              <Submit
+                size="lg"
+                className="w-full"
+                variant="secondary"
+                isLoading={verifyFetcher.state === "submitting"}
+                isDisabled={verifyFetcher.state !== "idle"}
+              >
+                Sign in
+              </Submit>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={() => {
+                  window.location.assign("/login");
+                }}
+              >
+                Use a different email
+              </Button>
             </VStack>
-          </>
+          </ValidatedForm>
         ) : mode === "verify" ? (
           <VStack spacing={4} className="items-center">
             <Heading size="h3">Verify your email</Heading>

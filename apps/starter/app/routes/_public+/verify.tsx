@@ -11,13 +11,7 @@ import {
   setAuthSession
 } from "@carbon/auth/session.server";
 import { verifyEmailCode } from "@carbon/auth/verification.server";
-import {
-  Hidden,
-  InputOTP,
-  Submit,
-  ValidatedForm,
-  validator
-} from "@carbon/form";
+import { Hidden, InputOTP, ValidatedForm, validator } from "@carbon/form";
 import {
   Alert,
   AlertDescription,
@@ -41,7 +35,6 @@ import {
 } from "react-router";
 import { z } from "zod";
 
-import type { Result } from "~/types";
 import { path } from "~/utils/path";
 
 export const meta: MetaFunction = () => {
@@ -98,7 +91,6 @@ export async function action({ request }: ActionFunctionArgs) {
     });
   }
 
-  // Signup: verify the email code (Redis) then create account
   const isCodeValid = await verifyEmailCode(email, code);
 
   if (!isCodeValid) {
@@ -108,7 +100,6 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
-  // Create the user account with a temporary password
   const temporaryPassword = crypto.randomBytes(16).toString("hex");
 
   const user = await createEmailAuthAccount(email, temporaryPassword);
@@ -120,7 +111,6 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
-  // Sign in the user to create an authentication session
   const authSession = await signInWithEmail(email, temporaryPassword);
 
   if (!authSession) {
@@ -134,8 +124,7 @@ export async function action({ request }: ActionFunctionArgs) {
     authSession
   });
 
-  // Set the authentication session
-  const onboardingUrl = redirectTo || path.to.onboarding.root;
+  const onboardingUrl = redirectTo || path.to.onboarding;
 
   return redirect(onboardingUrl, {
     headers: [["Set-Cookie", sessionCookie]]
@@ -148,7 +137,7 @@ export default function VerifyRoute() {
   const redirectTo = searchParams.get("redirectTo") ?? undefined;
   const intent = searchParams.get("intent") === "login" ? "login" : "signup";
 
-  const fetcher = useFetcher<Result>();
+  const fetcher = useFetcher();
 
   return (
     <>
@@ -177,25 +166,20 @@ export default function VerifyRoute() {
                 : `We've sent a verification code to ${email}`}
             </p>
 
-            {fetcher.data?.success === false && fetcher.data?.message && (
-              <Alert variant="destructive">
-                <LuCircleAlert className="w-4 h-4" />
-                <AlertTitle>Verification Error</AlertTitle>
-                <AlertDescription>{fetcher.data?.message}</AlertDescription>
-              </Alert>
-            )}
+            {fetcher.data &&
+              typeof fetcher.data === "object" &&
+              "success" in fetcher.data &&
+              fetcher.data.success === false &&
+              "message" in fetcher.data &&
+              typeof fetcher.data.message === "string" && (
+                <Alert variant="destructive">
+                  <LuCircleAlert className="w-4 h-4" />
+                  <AlertTitle>Verification Error</AlertTitle>
+                  <AlertDescription>{fetcher.data.message}</AlertDescription>
+                </Alert>
+              )}
 
             <InputOTP name="code" label="" />
-
-            <Submit
-              size="lg"
-              className="w-full"
-              variant="secondary"
-              isLoading={fetcher.state === "submitting"}
-              isDisabled={fetcher.state !== "idle"}
-            >
-              Continue
-            </Submit>
 
             <Button type="button" variant="link" size="sm" asChild>
               <Link to="/login">Use a different email</Link>

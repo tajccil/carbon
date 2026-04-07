@@ -20,6 +20,7 @@ import {
 } from "./session.server";
 import { getCompaniesForUser } from "./users";
 import { getUserClaims } from "./users.server";
+import { sendLoginOtpEmail } from "./verification.server";
 
 export async function createEmailAuthAccount(
   email: string,
@@ -304,13 +305,79 @@ export async function sendInviteByEmail(
   });
 }
 
-export async function sendMagicLink(email: string) {
-  return getCarbonServiceRole().auth.signInWithOtp({
+/**
+ * Email sign-in OTP: Supabase generates the code; we deliver it with the same
+ * SMTP/Resend path as signup verification emails. User completes sign-in via
+ * `verifyLoginOtpAndCreateAuthSession`.
+ */
+export async function sendLoginOtp(email: string) {
+  const { data, error } = await getCarbonServiceRole().auth.admin.generateLink({
+    type: "magiclink",
     email,
     options: {
-      emailRedirectTo: `${VERCEL_URL}`
+      redirectTo: `${VERCEL_URL}`
     }
   });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const otp = data?.properties?.email_otp;
+  if (!otp) {
+    return {
+      data: null,
+      error: { message: "Sign-in code could not be generated" }
+    };
+  }
+
+  const sent = await sendLoginOtpEmail(email, otp);
+
+  if (!sent) {
+    return {
+      data: null,
+      error: { message: "Failed to send sign-in code email" }
+    };
+  }
+
+  return { data: { user: data.user }, error: null };
+}
+
+/** Completes passwordless email sign-in after the user enters the OTP from email. */
+export async function verifyLoginOtpAndCreateAuthSession(
+  email: string,
+  token: string
+): Promise<AuthSession | null> {
+  const client = getCarbon();
+  const { data, error } = await client.auth.verifyOtp({
+    email,
+    token,
+    type: "magiclink"
+  });
+
+  if (error || !data.session) {
+    console.error(
+      "[verifyLoginOtpAndCreateAuthSession]",
+      email,
+      error?.message ?? error
+    );
+    return null;
+  }
+
+  const companyIds = await getCompaniesForUser(
+    getCarbon(data.session.access_token),
+    data.session.user.id
+  );
+
+  if (!companyIds.length) {
+    console.error(
+      "[verifyLoginOtpAndCreateAuthSession] no company for user",
+      email
+    );
+    return null;
+  }
+
+  return makeAuthSession(data.session, companyIds[0]);
 }
 
 export async function signInWithEmail(email: string, password: string) {

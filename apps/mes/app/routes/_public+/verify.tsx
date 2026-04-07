@@ -11,13 +11,7 @@ import {
   setAuthSession
 } from "@carbon/auth/session.server";
 import { verifyEmailCode } from "@carbon/auth/verification.server";
-import {
-  Hidden,
-  InputOTP,
-  Submit,
-  ValidatedForm,
-  validator
-} from "@carbon/form";
+import { Hidden, InputOTP, ValidatedForm, validator } from "@carbon/form";
 import {
   Alert,
   AlertDescription,
@@ -98,7 +92,6 @@ export async function action({ request }: ActionFunctionArgs) {
     });
   }
 
-  // Signup: verify the email code (Redis) then create account
   const isCodeValid = await verifyEmailCode(email, code);
 
   if (!isCodeValid) {
@@ -108,7 +101,6 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
-  // Create the user account with a temporary password
   const temporaryPassword = crypto.randomBytes(16).toString("hex");
 
   const user = await createEmailAuthAccount(email, temporaryPassword);
@@ -120,7 +112,6 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
-  // Sign in the user to create an authentication session
   const authSession = await signInWithEmail(email, temporaryPassword);
 
   if (!authSession) {
@@ -134,8 +125,7 @@ export async function action({ request }: ActionFunctionArgs) {
     authSession
   });
 
-  // Set the authentication session
-  const onboardingUrl = redirectTo || path.to.onboarding.root;
+  const onboardingUrl = redirectTo || path.to.onboarding;
 
   return redirect(onboardingUrl, {
     headers: [["Set-Cookie", sessionCookie]]
@@ -186,16 +176,6 @@ export default function VerifyRoute() {
             )}
 
             <InputOTP name="code" label="" />
-
-            <Submit
-              size="lg"
-              className="w-full"
-              variant="secondary"
-              isLoading={fetcher.state === "submitting"}
-              isDisabled={fetcher.state !== "idle"}
-            >
-              Continue
-            </Submit>
 
             <Button type="button" variant="link" size="sm" asChild>
               <Link to="/login">Use a different email</Link>

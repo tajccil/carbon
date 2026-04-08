@@ -8,9 +8,33 @@ Run the Carbon **ERP** container with a local **Postgres** volume, bind **port 3
 
 | Piece | Role |
 |--------|------|
-| **`docker-compose.yml`** | `postgres` (persistent volume) + `erp` (built from `apps/erp/Dockerfile`) |
+| **`docker-compose.yml`** | `postgres` (persistent volume) + `erp` (built from `apps/erp/Dockerfile`) on network **`carbon_selfhosted`**; only **`erp` port 3000** is published to the host (Postgres is internal). |
+| **`docker-compose.supabase-network.yml`** (optional) | Merges with the file above so **`erp`** also joins your Supabase CLI Docker network — use **`SUPABASE_SERVER_URL=http://<kong-container>:8000`** (see comments in that file). |
 | **Supabase-compatible API** | Required: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. The app uses `@supabase/supabase-js`; plain Postgres alone is not enough. Typical setup: **Supabase on the host** (`supabase start`) or [self-hosted Supabase Docker](https://supabase.com/docs/guides/self-hosting/docker). |
 | **Reverse proxy** | **You configure manually** (Apache, nginx, Caddy, etc.) — TLS and domain. Forward to `http://127.0.0.1:3000`. |
+
+### `supabase start` fails pulling from `public.ecr.aws` (DNS timeout on `127.0.0.53`)
+
+**`docker pull`** uses the **host** DNS stack (systemd-resolved at `127.0.0.53`). The **`dns`** field in **`/etc/docker/daemon.json`** applies to **containers**, not to the daemon’s registry lookups — so fixing only `daemon.json` often **does not** stop `lookup public.ecr.aws on 127.0.0.53` during pulls.
+
+From the **repo root**, run the full fix (systemd-resolved drop-in + daemon.json merge + restarts):
+
+```bash
+sudo npm run fix:docker-dns
+# or: sudo bash scripts/fix-docker-dns.sh
+```
+
+That installs **`deploy/systemd/resolved.conf.d/99-carbon-public-dns.conf`**, restarts **`systemd-resolved`**, merges **`/etc/docker/daemon.json`**, and restarts Docker. Then **`npm run db:start`** again.
+
+**Manual equivalent:**
+
+```bash
+sudo cp deploy/systemd/resolved.conf.d/99-carbon-public-dns.conf /etc/systemd/resolved.conf.d/
+sudo systemctl restart systemd-resolved
+sudo bash scripts/fix-docker-dns.sh
+```
+
+**If you cannot fix DNS:** use [hosted Supabase](https://supabase.com/dashboard) and set **`SUPABASE_URL`**, **`SUPABASE_SERVER_URL`**, and keys in **`deploy/selfhosted/.env`** to your project URL (no local `supabase start`).
 
 ## Production configuration (`.env`)
 
@@ -61,6 +85,36 @@ If Supabase runs **on the host** (e.g. port `54321`), use:
 The compose file already sets `extra_hosts: host.docker.internal:host-gateway`. Copy keys from `supabase status`.
 
 **Database consistency:** Prefer **one** Postgres: either the DB bundled with your Supabase stack, or this compose `postgres` service wired to Supabase (advanced). Avoid two unrelated databases.
+
+**Account creation** uses the **Supabase Auth HTTP API** (`auth.admin.createUser`), not a direct TCP connection to the compose `postgres` service. If signup fails, fix **`SUPABASE_URL` / `SUPABASE_SERVER_URL`** and connectivity to Kong first. **`SUPABASE_DB_URL`** must also be reachable from the **ERP** container (not `127.0.0.1` unless that truly resolves to Supabase’s Postgres from inside Docker — prefer `host.docker.internal` or the DB container hostname on a shared network).
+
+**Optional — Supabase in Docker on the same host:** after `supabase start`, attach ERP to the Supabase network and point the server at Kong:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.supabase-network.yml up -d
+```
+
+Set **`SUPABASE_SERVER_URL=http://supabase_kong_carbon-database:8000`** (confirm the Kong container name with `docker ps`). Adjust **`docker-compose.supabase-network.yml`** if your Supabase project uses a different network name (`docker network ls`).
+
+### “Failed to create user account” / `ECONNREFUSED` after email OTP
+
+Server-side signup calls Supabase Auth (`auth.admin.createUser`) using **`getSupabaseClientUrl()`** in `@carbon/auth`. Typical causes:
+
+1. **`SUPABASE_URL` still uses `http://127.0.0.1:54321` or `localhost`** — Inside the ERP container that points at the container itself, not the host. Prefer `http://host.docker.internal:54321` in **`deploy/selfhosted/.env`**, or set **`SUPABASE_SERVER_URL=http://host.docker.internal:54321`** explicitly (server-only; `SUPABASE_URL` can stay as the browser-facing URL).
+
+2. **Supabase API listens only on `127.0.0.1` on the host** — Traffic from Docker arrives on the bridge IP, not loopback, so the connection can be **refused** even with `host.docker.internal`. Fix one of:
+   - Use a **hosted** Supabase project and set `SUPABASE_URL` / `SUPABASE_SERVER_URL` to `https://<project>.supabase.co`.
+   - Or adjust local Supabase so the gateway accepts connections from the Docker bridge (see [Supabase CLI config](https://supabase.com/docs/guides/local-development/cli/config) — expose/bind the API appropriately for your OS), or run the **official Supabase Docker stack** on the same Docker network as ERP.
+
+3. **Rebuild the ERP image** after changing `@carbon/auth` or env — `docker compose build erp && docker compose up -d erp`.
+
+**Sanity check from the host** (Supabase up, keys loaded):
+
+```bash
+docker compose --env-file .env exec erp curl -fsS "http://host.docker.internal:54321/auth/v1/health"
+```
+
+You should get JSON, not “Connection refused”. Apache/nginx in front of **ERP** (port 3000) does not affect this outbound call.
 
 ---
 

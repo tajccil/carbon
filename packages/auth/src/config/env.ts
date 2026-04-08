@@ -66,6 +66,8 @@ declare global {
       STRIPE_BYPASS_USER_IDS: string;
       SUPABASE_ANON_KEY: string;
       SUPABASE_URL: string;
+      /** Optional: server-only Supabase API base URL (e.g. Docker ERP → host Supabase when SUPABASE_URL uses localhost). */
+      SUPABASE_SERVER_URL: string;
       SUPABASE_DB_URL: string;
       SUPABASE_AUTH_EXTERNAL_AZURE_CLIENT_ID: string;
       SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: string;
@@ -331,6 +333,43 @@ export const SUPABASE_URL = getEnv("SUPABASE_URL", { isSecret: false });
 export const SUPABASE_ANON_KEY = getEnv("SUPABASE_ANON_KEY", {
   isSecret: false
 });
+
+/**
+ * URL passed to @supabase/supabase-js createClient on the **server** (Node).
+ *
+ * - **Browser** always uses `SUPABASE_URL` from `window.env` (public anon client).
+ * - **Docker ERP** cannot reach a host-only Supabase at `http://127.0.0.1:54321` (that is the
+ *   container loopback). Set `SUPABASE_SERVER_URL` to the API URL the Node process can reach
+ *   (e.g. `http://host.docker.internal:54321`), or rely on `CARBON_DOCKER=1` + rewrite below.
+ * - If Supabase still refuses connections from Docker, bind the local API to all interfaces
+ *   (see `deploy/selfhosted/README.md`) or use a hosted Supabase project URL.
+ */
+export function getSupabaseClientUrl(): string {
+  const base = getEnv("SUPABASE_URL", { isSecret: false });
+  // Use `window`, not `isBrowser` — some bundles define `process` in the client and break
+  // `typeof process === "undefined"` (see @carbon/utils isBrowser).
+  if (typeof window !== "undefined") {
+    return base;
+  }
+
+  const explicit = process.env.SUPABASE_SERVER_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
+
+  if (process.env.CARBON_DOCKER === "1") {
+    try {
+      const u = new URL(base);
+      if (u.hostname === "127.0.0.1" || u.hostname === "localhost") {
+        u.hostname = "host.docker.internal";
+        return u.toString();
+      }
+    } catch {
+      /* ignore invalid URL */
+    }
+  }
+  return base;
+}
 
 export const RATE_LIMIT = parseInt(
   getEnv("RATE_LIMIT", { isRequired: false, isSecret: false }) || "5",

@@ -4,12 +4,26 @@
 # Postgres credentials come only from env_file (same directory as this file). That way
 # `docker compose -f deploy/selfhosted/docker-compose.yml` works from the repo root and does
 # not use the root .env for ${...} interpolation (which caused missing POSTGRES_PASSWORD).
+#
+# Networking: `postgres` and `erp` share `carbon_selfhosted` only. Postgres is not published
+# to the host; only ERP port 3000 is. Supabase runs separately — use host.docker.internal or
+# `docker-compose.supabase-network.yml` (see README).
+networks:
+  carbon_selfhosted:
+    name: carbon_selfhosted
+    driver: bridge
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     env_file:
       - .env
+    # Fail fast if .env omits Postgres creds (common when copying root dev .env only).
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-carbon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/selfhosted/.env (see .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:-carbon}
     volumes:
       - carbon_postgres_data:/var/lib/postgresql/data
     # start_period: first init of an empty volume can take 30s+; failures before this do not mark unhealthy
@@ -19,6 +33,8 @@ services:
       timeout: 5s
       retries: 12
       start_period: 60s
+    networks:
+      - carbon_selfhosted
 
   erp:
     build:
@@ -27,6 +43,9 @@ services:
     restart: unless-stopped
     ports:
       - "0.0.0.0:3000:3000"
+    environment:
+      # Server-side Supabase calls rewrite localhost → host.docker.internal (see getSupabaseClientUrl in @carbon/auth)
+      CARBON_DOCKER: "1"
     env_file:
       - .env
     depends_on:
@@ -35,6 +54,8 @@ services:
     # If Supabase runs on the host (e.g. `supabase start`), use SUPABASE_URL=http://host.docker.internal:54321
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - carbon_selfhosted
 
 volumes:
   carbon_postgres_data:

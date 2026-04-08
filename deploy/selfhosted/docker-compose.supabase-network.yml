@@ -1,0 +1,23 @@
+# Optional overlay: put ERP on the same Docker network as `supabase start` / Supabase CLI stack
+# so the server can reach Kong by container name (no host.docker.internal).
+#
+# From deploy/selfhosted (or repo root with -f paths):
+#   docker compose -f docker-compose.yml -f docker-compose.supabase-network.yml up -d
+#
+# Then set in .env (server uses SUPABASE_SERVER_URL when set — see packages/auth getSupabaseClientUrl):
+#   SUPABASE_URL=http://127.0.0.1:54321
+#   SUPABASE_SERVER_URL=http://supabase_kong_carbon-database:8000
+#
+# Replace `supabase_kong_carbon-database` with your `docker ps` Kong name if different.
+# Network name must match: docker network ls | grep supabase
+
+services:
+  erp:
+    networks:
+      - carbon_selfhosted
+      - supabase_stack
+
+networks:
+  supabase_stack:
+    external: true
+    name: supabase_network_carbon-database

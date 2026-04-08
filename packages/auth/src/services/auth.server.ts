@@ -36,7 +36,23 @@ export async function createEmailAuthAccount(
   });
 
   if (!data.user || error) {
-    console.error("[createEmailAuthAccount]", email, error?.message ?? error);
+    const msg =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message: unknown }).message)
+        : String(error);
+    const cause =
+      error &&
+      typeof error === "object" &&
+      "cause" in error &&
+      (error as { cause: unknown }).cause != null
+        ? String((error as { cause: unknown }).cause)
+        : "";
+    console.error(
+      "[createEmailAuthAccount]",
+      email,
+      msg,
+      cause ? { cause } : ""
+    );
     return null;
   }
 
